@@ -71,7 +71,11 @@ void readIMUData(uint8_t mpu) {
         Serial.println("Falha ao enviar dados para a fila.");
     }
 
-    (index_data >= history_size - 1) ? index_data = 0 : index_data++;
+    if (index_data >= (history_size - 1)) {
+        index_data = 0;  
+    } else {
+        index_data++;
+    }
 }
 
 void selectMPU(uint8_t mpu) {
