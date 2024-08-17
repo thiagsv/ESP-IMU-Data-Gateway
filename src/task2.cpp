@@ -1,4 +1,4 @@
-#include "tasks.h"
+#include "../include/tasks.h"
 
 const int MPU_ADDR = 0x69;
 const uint8_t n = 5;
