@@ -21,7 +21,10 @@ void Task1(void *pvParameters) {
                 }
             }
         } else {
-            imuDataQueue = xQueueCreate(10, sizeof(String));
+            IMUData discardData;
+            while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
+                // Discard data
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(500));
     }
