@@ -22,6 +22,16 @@
 #include <WebHandlerImpl.h>
 #include <WebResponseImpl.h>
 
+struct IMUData {
+    double AcX;
+    double AcY;
+    double AcZ;
+    double GyX;
+    double GyY;
+    double GyZ;
+    double Timestamp;
+};
+
 extern int runCollect;
 extern QueueHandle_t imuDataQueue;
 extern const uint8_t AD0_MPU[];
