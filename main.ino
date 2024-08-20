@@ -8,6 +8,7 @@ AsyncWebServer server(80);
 int runCollect = 0; 
 const char *ssid = "ESP32_AP";
 const char *password = "123456789";
+String fileName;
 
 void setup() {
   Serial.begin(115200);
@@ -33,6 +34,7 @@ void setup() {
       runCollect = !runCollect;
       if (runCollect) {
         initialTime = millis();
+        fileName = "/" + String(initialTime) + ".txt";
       }
       request->send(200, "text/plain", String(runCollect));
       Serial.println("Valor de runCollect invertido para: " + String(runCollect));
@@ -40,9 +42,9 @@ void setup() {
 
   server.on("/getData", HTTP_GET, [](AsyncWebServerRequest *request) {
       if (runCollect == 0) {
-          File file = SD.open("/data.txt");
+          File file = SD.open(fileName);
           if (file) {
-              request->send(file, "/data.txt", "text/plain");
+              request->send(file, fileName, "text/plain");
               file.close();
           } else {
               request->send(500, "text/plain", "Failed to open file on SD card");
