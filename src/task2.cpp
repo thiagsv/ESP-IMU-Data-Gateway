@@ -94,7 +94,7 @@ void Task2(void *pvParameters) {
             for (uint8_t i = 0; i < n; i++) {
                 selectMPU(i);
                 readIMUData(i);
-                vTaskDelay(pdMS_TO_TICKS(1));  // Delay to avoid overwhelming the system
+                vTaskDelay(pdMS_TO_TICKS(500));  // Delay to avoid overwhelming the system
             }
             deselectMPUs();
         } else {
