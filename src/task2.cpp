@@ -2,8 +2,6 @@
 
 const int MPU_ADDR = 0x69;
 const uint8_t n = 5;
-const uint16_t history_size = 600 / n;
-volatile double Vector_data[n][7][history_size];
 volatile uint8_t index_data = 0;
 
 const uint8_t AD0_MPU[] = {15, 2, 4, 16, 17, 3, 1, 13, 32, 33, 25, 26, 27};
@@ -50,31 +48,17 @@ void readIMUData(uint8_t mpu) {
     int16_t GyY = Wire.read() << 8 | Wire.read();
     int16_t GyZ = Wire.read() << 8 | Wire.read();
 
-    Vector_data[mpu][0][index_data] = double(AcX) / 16384;
-    Vector_data[mpu][1][index_data] = double(AcY) / 16384;
-    Vector_data[mpu][2][index_data] = double(AcZ) / 16384;
-    Vector_data[mpu][3][index_data] = double(GyX) / 65.5;
-    Vector_data[mpu][4][index_data] = double(GyY) / 65.5;
-    Vector_data[mpu][5][index_data] = double(GyZ) / 65.5;
-    Vector_data[mpu][6][index_data] = double(millis() - initialTime) / 1000;
-
-    String imuData = "";
-    for (uint8_t i = 0; i < n; i++) {
-        for (uint8_t j = 0; j < 7; j++) {
-            imuData += String(Vector_data[i][j][index_data]);
-            if (j < 6) imuData += ",";
-        }
-        if (i < n - 1) imuData += ";";
-    }
+    IMUData imuData;
+    imuData.AcX = double(AcX) / 16384;
+    imuData.AcY = double(AcY) / 16384;
+    imuData.AcZ = double(AcZ) / 16384;
+    imuData.GyX = double(GyX) / 65.5;
+    imuData.GyY = double(GyY) / 65.5;
+    imuData.GyZ = double(GyZ) / 65.5;
+    imuData.Timestamp = double(millis() - initialTime) / 1000;
 
     if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
         Serial.println("Falha ao enviar dados para a fila.");
-    }
-
-    if (index_data >= (history_size - 1)) {
-        index_data = 0;  
-    } else {
-        index_data++;
     }
 }
 
