@@ -26,6 +26,7 @@ extern int runCollect;
 extern QueueHandle_t imuDataQueue;
 extern const uint8_t AD0_MPU[];
 extern unsigned long initialTime;
+extern String fileName;
 
 void Task1(void *pvParameters);
 void Task2(void *pvParameters);
