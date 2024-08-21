@@ -3,7 +3,7 @@
 void Task1(void *pvParameters) {
     while (true) {
         if (runCollect) {
-            String imuData;
+            IMUData imuData;
             if (xQueueReceive(imuDataQueue, &imuData, 0) == pdPASS) {
                 File file = SD.open(fileName, FILE_APPEND);
                 if (file) {
