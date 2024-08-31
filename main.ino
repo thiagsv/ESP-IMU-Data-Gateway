@@ -8,21 +8,15 @@ AsyncWebServer server(80);
 int runCollect = 0; 
 const char *ssid = "ESP32_AP";
 const char *password = "123456789";
-String fileName;
+String fileName = "imuData.txt";
 
 void setup() {
   Serial.begin(115200);
 
-  if (!SD.begin()) {
-    Serial.println("Failed to initialize SD card.");
-    return;
-  }
-
-  uint8_t cardType = SD.cardType();
-
-  if (cardType == CARD_NONE) {
-    Serial.println("No SD card attached");
-    return;
+  if (!SPIFFS.begin(true)) {
+      Serial.println("Falha ao montar o sistema de arquivos SPIFFS.");
+  } else {
+      Serial.println("SPIFFS montado com sucesso.");
   }
 
   WiFi.softAP(ssid, password);
@@ -42,21 +36,24 @@ void setup() {
 
   server.on("/getData", HTTP_GET, [](AsyncWebServerRequest *request) {
       if (runCollect == 0) {
-          File file = SD.open(fileName);
+          File file = SPIFFS.open("/" + fileName, "r");
+  
           if (file) {
-              request->send(file, fileName, "text/plain");
-              file.close();
+              // Enviar o arquivo como um stream assíncrono
+              request->send(file, fileName, "text/plain", true); 
+              // 'true' habilita o envio em chunks assíncronos
           } else {
-              request->send(500, "text/plain", "Failed to open file on SD card");
+              request->send(500, "text/plain", "Failed to open file on SPIFFS");
           }
       } else {
           request->send(403, "text/plain", "Data collection is in progress. Try again later.");
       }
   });
 
+
   server.begin();
 
-  imuDataQueue = xQueueCreate(10, sizeof(String));  // Ajuste o tamanho conforme necessário
+  imuDataQueue = xQueueCreate(10, sizeof(String)); 
 
   xTaskCreatePinnedToCore(
     Task1,
