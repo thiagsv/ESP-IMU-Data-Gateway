@@ -4,13 +4,8 @@
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
-#include <SD.h>
 #include <WiFi.h>
 #include <Wire.h>
-
-#include <FS.h>
-#include <FSImpl.h>
-#include <vfs_api.h>
 
 #include <AsyncEventSource.h>
 #include <AsyncJson.h>
