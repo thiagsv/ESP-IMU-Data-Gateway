@@ -21,6 +21,15 @@ void Task1(void *pvParameters) {
                 }
             }
         } else {
+            // Esvazia o arquivo
+            File file = SPIFFS.open("/" + fileName, "w");
+            if (file) {
+                file.close(); // Fecha imediatamente após abrir para garantir que está vazio
+                Serial.println("Arquivo esvaziado.");
+            } else {
+                Serial.println("Falha ao abrir o arquivo para esvaziar.");
+            }
+
             IMUData discardData;
             while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
                 // Descartar dados
