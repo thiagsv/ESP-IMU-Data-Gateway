@@ -5,7 +5,7 @@ void Task1(void *pvParameters) {
         if (runCollect) {
             IMUData imuData;
             if (xQueueReceive(imuDataQueue, &imuData, 0) == pdPASS) {
-                File file = SD.open(fileName, FILE_APPEND);
+                File file = SPIFFS.open("/" + fileName, FILE_APPEND);
                 if (file) {
                     file.print(imuData.AcX); file.print(",");
                     file.print(imuData.AcY); file.print(",");
@@ -15,15 +15,15 @@ void Task1(void *pvParameters) {
                     file.print(imuData.GyZ); file.print(",");
                     file.println(imuData.Timestamp); file.print(";");
                     file.close();
-                    Serial.println("Dados escritos no SD.");
+                    Serial.println("Dados escritos no SPIFFS.");
                 } else {
-                    Serial.println("Falha ao abrir o arquivo no SD.");
+                    Serial.println("Falha ao abrir o arquivo no SPIFFS.");
                 }
             }
         } else {
             IMUData discardData;
             while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
-                // Discard data
+                // Descartar dados
             }
         }
         vTaskDelay(pdMS_TO_TICKS(500));
