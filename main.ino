@@ -96,12 +96,11 @@ void createMockIMUData() {
       file.print(i); file.print(","); // GyX
       file.print(i); file.print(","); // GyY
       file.print(i); file.print(","); // GyZ
-      file.print(millis());  // Timestamp
-      file.print(";");     // Adiciona ";" no final da linha e nova linha
+      file.print(millis());  // Timestamp 
+      file.print(";\n");     // Adiciona ";" no final da linha e nova linha
   }
 
   // Fecha o arquivo
   file.close();
   Serial.println("Dados mock sobrescritos no arquivo imuData.txt.");
-
 }

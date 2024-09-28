@@ -13,7 +13,7 @@ void Task1(void *pvParameters) {
                     file.print(imuData.GyX); file.print(",");
                     file.print(imuData.GyY); file.print(",");
                     file.print(imuData.GyZ); file.print(",");
-                    file.println(imuData.Timestamp); file.print(";");
+                    file.print(imuData.Timestamp); file.print(";\n");
                     file.close();
                     Serial.println("Dados escritos no SPIFFS.");
                 } else {
