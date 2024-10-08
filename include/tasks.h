@@ -19,6 +19,7 @@
 #include <WebResponseImpl.h>
 
 struct IMUData {
+    uint8_t Id;
     double AcX;
     double AcY;
     double AcZ;

@@ -53,12 +53,12 @@ void setup() {
 
   server.begin();
 
-  imuDataQueue = xQueueCreate(10, sizeof(String)); 
+  imuDataQueue = xQueueCreate(300, sizeof(IMUData)); 
 
   xTaskCreatePinnedToCore(
     Task1,
     "Task1",
-    4096,
+    6144,
     NULL,
     1,
     &task1Handle,
@@ -68,7 +68,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     Task2,
     "Task2",
-    8192,
+    12288,
     NULL,
     2,
     &task2Handle,

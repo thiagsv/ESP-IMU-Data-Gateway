@@ -1,9 +1,7 @@
 #include "../include/tasks.h"
 
 const int MPU_ADDR = 0x69;
-const uint8_t n = 5;
-volatile uint8_t index_data = 0;
-
+const uint8_t n = 13;
 const uint8_t AD0_MPU[] = {15, 2, 4, 16, 17, 3, 1, 13, 32, 33, 25, 26, 27};
 unsigned long initialTime = 0;
 
@@ -49,6 +47,7 @@ void readIMUData(uint8_t mpu) {
     int16_t GyZ = Wire.read() << 8 | Wire.read();
 
     IMUData imuData;
+    imuData.Id = mpu;
     imuData.AcX = double(AcX) / 16384;
     imuData.AcY = double(AcY) / 16384;
     imuData.AcZ = double(AcZ) / 16384;
@@ -56,6 +55,14 @@ void readIMUData(uint8_t mpu) {
     imuData.GyY = double(GyY) / 65.5;
     imuData.GyZ = double(GyZ) / 65.5;
     imuData.Timestamp = double(millis() - initialTime) / 1000;
+
+    Serial.print("Id: "); Serial.print(mpu);
+    Serial.print(", AcX: "); Serial.print(imuData.AcX);
+    Serial.print(", AcY: "); Serial.print(imuData.AcY);
+    Serial.print(", AcZ: "); Serial.print(imuData.AcZ);
+    Serial.print(", GyX: "); Serial.print(imuData.GyX);
+    Serial.print(", GyY: "); Serial.print(imuData.GyY);
+    Serial.print(", GyZ: "); Serial.print(imuData.GyZ);
 
     if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
         Serial.println("Falha ao enviar dados para a fila.");
