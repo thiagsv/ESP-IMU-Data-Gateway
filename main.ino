@@ -20,9 +20,6 @@ void setup() {
       Serial.println("SPIFFS montado com sucesso.");
   }
 
-  // Criar dados mock (ou continuar a escrever no arquivo existente)
-  createMockIMUData();
-
   // Criar ponto de acesso Wi-Fi
   WiFi.softAP(ssid, password);
   Serial.println("Ponto de acesso criado");
@@ -77,30 +74,3 @@ void setup() {
 }
 
 void loop() {}
-
-// Função para criar/atualizar o arquivo imuData.txt com dados mock
-void createMockIMUData() {
-  // Gera um arquivo mock com dados do IMU no SPIFFS no modo WRITE (sobrescrevendo o arquivo existente)
-  File file = SPIFFS.open(fileName, FILE_WRITE);  // Usando FILE_WRITE para sobrescrever
-
-  if (!file) {
-      Serial.println("Falha ao abrir o arquivo imuData.txt para escrita.");
-      return;
-  }
-
-  // Dados mock (AcX, AcY, AcZ, GyX, GyY, GyZ, Timestamp)
-  for (int i = 0; i < 10; i++) {
-      file.print(i); file.print(","); // AcX
-      file.print(i); file.print(","); // AcY
-      file.print(i); file.print(","); // AcZ
-      file.print(i); file.print(","); // GyX
-      file.print(i); file.print(","); // GyY
-      file.print(i); file.print(","); // GyZ
-      file.print(millis());  // Timestamp 
-      file.print(";\n");     // Adiciona ";" no final da linha e nova linha
-  }
-
-  // Fecha o arquivo
-  file.close();
-  Serial.println("Dados mock sobrescritos no arquivo imuData.txt.");
-}
