@@ -7,35 +7,45 @@ unsigned long initialTime = 0;
 
 void setupMPU() {
     Wire.beginTransmission(MPU_ADDR);
-    Wire.write(0x6B); 
-    Wire.write(0x00);
-    Wire.write(0x80);
+    Wire.write(0x6B);
+    Wire.write(0x80); // Reseta o sensor
     Wire.endTransmission(false);
 
     delay(100);
 
     Wire.beginTransmission(MPU_ADDR);
+    Wire.write(0x6B);
+    Wire.write(0x00); // Desativa o modo sleep
+    Wire.endTransmission(false);
+
+    delay(100);
+
+    // --- Taxa de amostragem no máximo ---
+    Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x19);
     Wire.write(0x00);
     Wire.endTransmission(false);
 
+    // --- Configura a sensibilidade do acelerômetro ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1C);
-    Wire.write(0x00);
+    Wire.write(0x00);  // Define a faixa de ±2g para o acelerômetro
     Wire.endTransmission(false);
 
+    // --- Configura a sensibilidade do giroscópio ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1B);
-    Wire.write(0x08);
+    Wire.write(0x08);  // Define a faixa de ±500°/s para o giroscópio
     Wire.endTransmission(false);
 
+    // --- Configura o filtro passa-baixa ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1A);
     Wire.write(0x05);
     Wire.endTransmission(false);
 }
 
-void readIMUData(uint8_t mpu) {
+void getIMUData(uint8_t mpu) {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x3B);  // Endereço do registrador do acelerômetro
 
@@ -98,6 +108,14 @@ void deselectMPUs() {
     }
 }
 
+void initMPUs() {
+    for (uint8_t i = 0; i < n; i++) {
+        selectMPU(i);
+        setupMPU();  // Função já existente que configura o sensor
+    }
+    deselectMPUs();
+}
+
 // Função para criar/atualizar o arquivo imuData.txt com dados mock
 void createMockIMUData() {
   // Gera um arquivo mock com dados do IMU no SPIFFS no modo WRITE (sobrescrevendo o arquivo existente)
@@ -134,20 +152,23 @@ void Task2(void *pvParameters) {
         digitalWrite(AD0_MPU[i], LOW);
     }
 
-    for (uint8_t i = 0; i < n; i++) {
-        selectMPU(i);
-        setupMPU();
-    }
-    deselectMPUs();
+    initMPUs();
 
     while (true) {
         if (runCollect) {
             for (uint8_t i = 0; i < n; i++) {
                 selectMPU(i);
-                readIMUData(i);
+                getIMUData(i);
                 // Criar dados mock (ou continuar a escrever no arquivo existente)
                 // createMockIMUData();
-                vTaskDelay(pdMS_TO_TICKS(500));  // Delay to avoid overwhelming the system
+
+                int dynamicDelay = 500;
+                if (uxQueueSpacesAvailable(imuDataQueue) < 3) {
+                    dynamicDelay = 1000;
+                    Serial.println("Fila com pouco espaço");
+                }
+
+                vTaskDelay(pdMS_TO_TICKS(dynamicDelay));
             }
             deselectMPUs();
         } else {
