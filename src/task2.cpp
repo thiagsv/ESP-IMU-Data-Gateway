@@ -11,14 +11,14 @@ void setupMPU() {
     Wire.write(0x80); // Reseta o sensor
     Wire.endTransmission(false);
 
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x6B);
     Wire.write(0x00); // Desativa o modo sleep
     Wire.endTransmission(false);
 
-    delay(100);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     // --- Taxa de amostragem no máximo ---
     Wire.beginTransmission(MPU_ADDR);
@@ -99,7 +99,7 @@ void selectMPU(uint8_t mpu) {
     uint8_t highMPU = mpu == 0 ? (n - 1) : (mpu - 1);
     digitalWrite(AD0_MPU[highMPU], LOW);
     digitalWrite(AD0_MPU[mpu], HIGH);
-    delay(10);
+    vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void deselectMPUs() {
@@ -109,6 +109,11 @@ void deselectMPUs() {
 }
 
 void initMPUs() {
+    for (uint8_t i = 0; i < n; i++) {
+        pinMode(AD0_MPU[i], OUTPUT);
+        digitalWrite(AD0_MPU[i], LOW);
+    }
+
     for (uint8_t i = 0; i < n; i++) {
         selectMPU(i);
         setupMPU();  // Função já existente que configura o sensor
@@ -146,11 +151,6 @@ void createMockIMUData() {
 void Task2(void *pvParameters) {
     Wire.begin();
     Wire.setClock(400000);
-
-    for (uint8_t i = 0; i < n; i++) {
-        pinMode(AD0_MPU[i], OUTPUT);
-        digitalWrite(AD0_MPU[i], LOW);
-    }
 
     initMPUs();
 

@@ -4,14 +4,14 @@ void Task1(void *pvParameters) {
     bool fileOpen = false;
     bool removeFileData = false;
     File file;
-    
+
     while (true) {
         if (runCollect) {
             if (!fileOpen) {
                 file = SPIFFS.open(fileName, FILE_APPEND);  // Abre o arquivo no modo append
                 if (!file) {
                     Serial.println("Falha ao abrir o arquivo no SPIFFS.");
-                    vTaskDelay(pdMS_TO_TICKS(500));  // Ajuste conforme a frequência de coleta
+                    vTaskDelay(pdMS_TO_TICKS(100));  // Ajuste conforme a frequência de coleta
                     continue;  // Tenta novamente na próxima iteração
                 }
                 fileOpen = true;
@@ -52,6 +52,6 @@ void Task1(void *pvParameters) {
                 // Dados descartados
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(500));  // Ajuste conforme a frequência de coleta
+        vTaskDelay(pdMS_TO_TICKS(100));  // Ajuste conforme a frequência de coleta
     }
 }
