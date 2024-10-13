@@ -5,11 +5,14 @@ const uint8_t n = 13;
 const uint8_t AD0_MPU[] = {15, 2, 4, 16, 17, 3, 1, 13, 32, 33, 25, 26, 27};
 unsigned long initialTime = 0;
 
-void setupMPU(uint8_t mpu) {
+void setupMPU() {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x6B); 
-    Wire.write(0x01);
+    Wire.write(0x00);
+    Wire.write(0x80);
     Wire.endTransmission(false);
+
+    delay(100);
 
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x19);
@@ -34,9 +37,22 @@ void setupMPU(uint8_t mpu) {
 
 void readIMUData(uint8_t mpu) {
     Wire.beginTransmission(MPU_ADDR);
-    Wire.write(0x3B);
-    Wire.endTransmission(false);
-    Wire.requestFrom(MPU_ADDR, 14, true);
+    Wire.write(0x3B);  // Endereço do registrador do acelerômetro
+
+    int transmissionStatus = Wire.endTransmission(false);  // Envia comando sem finalizar I2C
+
+    if (transmissionStatus != 0) {
+        Serial.print("Erro na transmissão com MPU ");
+        Serial.print(mpu);
+        Serial.print(". Código de erro: ");
+        Serial.println(transmissionStatus);
+        return;
+    }
+
+    if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
+        Serial.println("Erro: não foi possível ler os dados do MPU.");
+        return;
+    }
 
     int16_t AcX = Wire.read() << 8 | Wire.read();
     int16_t AcY = Wire.read() << 8 | Wire.read();
@@ -73,6 +89,7 @@ void selectMPU(uint8_t mpu) {
     uint8_t highMPU = mpu == 0 ? (n - 1) : (mpu - 1);
     digitalWrite(AD0_MPU[highMPU], LOW);
     digitalWrite(AD0_MPU[mpu], HIGH);
+    delay(10);
 }
 
 void deselectMPUs() {
@@ -92,7 +109,7 @@ void Task2(void *pvParameters) {
 
     for (uint8_t i = 0; i < n; i++) {
         selectMPU(i);
-        setupMPU(i);
+        setupMPU();
     }
     deselectMPUs();
 

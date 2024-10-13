@@ -1,41 +1,57 @@
 #include "../include/tasks.h"
 
 void Task1(void *pvParameters) {
+    bool fileOpen = false;
+    bool removeFileData = false;
+    File file;
+    
     while (true) {
         if (runCollect) {
+            if (!fileOpen) {
+                file = SPIFFS.open(fileName, FILE_APPEND);  // Abre o arquivo no modo append
+                if (!file) {
+                    Serial.println("Falha ao abrir o arquivo no SPIFFS.");
+                    vTaskDelay(pdMS_TO_TICKS(500));  // Ajuste conforme a frequência de coleta
+                    continue;  // Tenta novamente na próxima iteração
+                }
+                fileOpen = true;
+            }
+
             IMUData imuData;
             if (xQueueReceive(imuDataQueue, &imuData, 0) == pdPASS) {
-                File file = SPIFFS.open(fileName, FILE_APPEND);
-                if (file) {
-                    file.print(imuData.Id); file.print(",");
-                    file.print(imuData.AcX); file.print(",");
-                    file.print(imuData.AcY); file.print(",");
-                    file.print(imuData.AcZ); file.print(",");
-                    file.print(imuData.GyX); file.print(",");
-                    file.print(imuData.GyY); file.print(",");
-                    file.print(imuData.GyZ); file.print(",");
-                    file.print(imuData.Timestamp); file.print(";\n");
-                    file.close();
+                if (fileOpen) {
+                    file.printf("%d,%f,%f,%f,%f,%f,%f,%f;\n",
+                                imuData.Id, imuData.AcX, imuData.AcY, imuData.AcZ,
+                                imuData.GyX, imuData.GyY, imuData.GyZ, imuData.Timestamp);
                     Serial.println("Dados escritos no SPIFFS.");
-                } else {
-                    Serial.println("Falha ao abrir o arquivo no SPIFFS.");
+                    removeFileData = true;
                 }
             }
         } else {
-            // Esvazia o arquivo
-            File file = SPIFFS.open(fileName, "w");
-            if (file) {
-                file.close(); // Fecha imediatamente após abrir para garantir que está vazio
-                Serial.println("Arquivo esvaziado.");
-            } else {
-                Serial.println("Falha ao abrir o arquivo para esvaziar.");
+            if (fileOpen) {
+                file.close();  // Fecha o arquivo quando a coleta for interrompida
+                fileOpen = false;
+                Serial.println("Arquivo fechado.");
             }
 
+            if (removeFileData) {
+                // Esvazia o arquivo
+                File emptyFile = SPIFFS.open(fileName, "w");
+                if (emptyFile) {
+                    emptyFile.close();
+                    Serial.println("Arquivo esvaziado.");
+                } else {
+                    Serial.println("Falha ao abrir o arquivo para esvaziar.");
+                }
+                removeFileData = false;
+            }
+
+            // Descartar dados da fila
             IMUData discardData;
             while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
-                // Descartar dados
+                // Dados descartados
             }
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(500));  // Ajuste conforme a frequência de coleta
     }
 }
