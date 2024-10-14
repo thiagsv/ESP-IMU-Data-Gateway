@@ -13,6 +13,7 @@ String fileName = "/imuData.txt";
 void setup() {
   Serial.begin(115200);
   delay(1000);
+
   // Montar SPIFFS
   if (!SPIFFS.begin(true)) {
       Serial.println("Falha ao montar o sistema de arquivos SPIFFS.");
@@ -39,7 +40,6 @@ void setup() {
           File file = SPIFFS.open(fileName, "r");
 
           if (file) {
-              // Envia o arquivo usando streamFile, que é mais eficiente para arquivos
               request->send(file, "text/plain", true);
               file.close();  // Fecha o arquivo após o envio
           } else {
@@ -57,7 +57,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     Task1,
     "Task1",
-    6144,
+    4096,
     NULL,
     1,
     &task1Handle,
@@ -67,9 +67,9 @@ void setup() {
   xTaskCreatePinnedToCore(
     Task2,
     "Task2",
-    12288,
+    8192,
     NULL,
-    2,
+    1,
     &task2Handle,
     1
   );

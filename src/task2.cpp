@@ -88,7 +88,7 @@ void getIMUData(uint8_t mpu) {
     Serial.print(", AcZ: "); Serial.print(imuData.AcZ);
     Serial.print(", GyX: "); Serial.print(imuData.GyX);
     Serial.print(", GyY: "); Serial.print(imuData.GyY);
-    Serial.print(", GyZ: "); Serial.print(imuData.GyZ);
+    Serial.print(", GyZ: "); Serial.println(imuData.GyZ);
 
     if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
         Serial.println("Falha ao enviar dados para a fila.");

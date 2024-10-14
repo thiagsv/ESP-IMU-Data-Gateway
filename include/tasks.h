@@ -20,13 +20,13 @@
 
 struct IMUData {
     uint8_t Id;
-    double AcX;
-    double AcY;
-    double AcZ;
-    double GyX;
-    double GyY;
-    double GyZ;
-    double Timestamp;
+    float AcX;
+    float AcY;
+    float AcZ;
+    float GyX;
+    float GyY;
+    float GyZ;
+    float Timestamp;
 };
 
 extern int runCollect;
