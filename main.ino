@@ -37,20 +37,11 @@ void setup() {
   server.on("/getData", HTTP_GET, [](AsyncWebServerRequest *request) {
       if (runCollect == 0) {
           File file = SPIFFS.open(fileName, "r");
-  
+
           if (file) {
-                size_t fileSize = file.size();  // Obtém o tamanho do arquivo
-                size_t chunkSize = 1024;  // Tamanho padrão do chunk (pode ser ajustado dinamicamente)
-
-                // Ajusta o chunk dinamicamente para arquivos menores
-                if (fileSize < chunkSize) {
-                    chunkSize = fileSize;
-                }
-
-                request->send(file, fileName, "text/plain", true, [chunkSize](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
-                    size_t len = file.read(buffer, min(chunkSize, maxLen));  // Lê o arquivo em chunks
-                    return len;  // Retorna o número de bytes lidos
-                });
+              // Envia o arquivo usando streamFile, que é mais eficiente para arquivos
+              request->send(file, "text/plain", true);
+              file.close();  // Fecha o arquivo após o envio
           } else {
               request->send(500, "text/plain", "Falha ao abrir o arquivo no SPIFFS");
           }
