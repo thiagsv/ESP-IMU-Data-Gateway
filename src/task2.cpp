@@ -1,24 +1,36 @@
 #include "../include/tasks.h"
 
 const int MPU_ADDR = 0x69;
-const uint8_t n = 13;
-const uint8_t AD0_MPU[] = {15, 2, 4, 16, 17, 3, 1, 13, 32, 33, 25, 26, 27};
+const uint8_t n = 5;
+const uint8_t AD0_MPU[] = {17, 16, 4, 12, 15};
 unsigned long initialTime = 0;
 
 void setupMPU() {
+    // Reset do MPU para garantir que ele inicie corretamente
+    Wire.beginTransmission(MPU_ADDR);
+    Wire.write(0x6B);  // Registrador de gerenciamento de energia
+    Wire.write(0x80);  // Comando de reset
+    Wire.endTransmission(true);
+
+    // vTaskDelay(pdMS_TO_TICKS(100));  // Aguarde o reset completar
+
+    // Sair do modo sleep e usar o clock PLL
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x6B);
-    Wire.write(0x80); // Reseta o sensor
-    Wire.endTransmission(false);
+    Wire.write(0x00);
+    Wire.endTransmission(true);
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+    // Adicione um pequeno delay para permitir que o MPU estabilize
+    // vTaskDelay(pdMS_TO_TICKS(100));
 
-    Wire.beginTransmission(MPU_ADDR);
-    Wire.write(0x6B);
-    Wire.write(0x00); // Desativa o modo sleep
-    Wire.endTransmission(false);
-
-    vTaskDelay(pdMS_TO_TICKS(100));
+    // Verifica se o sensor acordou corretamente
+    // Wire.beginTransmission(MPU_ADDR);
+    // Wire.write(0x6B);  // Registrador de gerenciamento de energia
+    // Wire.endTransmission(false);
+    // Wire.requestFrom(MPU_ADDR, 1, true);  // Solicita 1 byte de dado
+    // byte powerManagement = Wire.read();
+    // Serial.print("Power Management Register: ");
+    // Serial.println(powerManagement, HEX);  // Deve retornar 0x00
 
     // --- Taxa de amostragem no máximo ---
     Wire.beginTransmission(MPU_ADDR);
@@ -42,7 +54,7 @@ void setupMPU() {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1A);
     Wire.write(0x05);
-    Wire.endTransmission(false);
+    Wire.endTransmission();
 }
 
 void getIMUData(uint8_t mpu) {
@@ -60,7 +72,8 @@ void getIMUData(uint8_t mpu) {
     }
 
     if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
-        Serial.println("Erro: não foi possível ler os dados do MPU.");
+        Serial.print("Erro: não foi possível ler os dados do MPU: ");
+        Serial.println(AD0_MPU[mpu]);
         return;
     }
 
@@ -82,14 +95,13 @@ void getIMUData(uint8_t mpu) {
     imuData.GyZ = double(GyZ) / 65.5;
     imuData.Timestamp = double(millis() - initialTime) / 1000;
 
-    Serial.print("Id: "); Serial.print(mpu);
-    Serial.print(", AcX: "); Serial.print(imuData.AcX);
-    Serial.print(", AcY: "); Serial.print(imuData.AcY);
-    Serial.print(", AcZ: "); Serial.print(imuData.AcZ);
-    Serial.print(", GyX: "); Serial.print(imuData.GyX);
-    Serial.print(", GyY: "); Serial.print(imuData.GyY);
-    Serial.print(", GyZ: "); Serial.println(imuData.GyZ);
-
+    // Serial.print("Id: "); Serial.print(mpu);
+    // Serial.print(", AcX: "); Serial.print(imuData.AcX, 6);
+    // Serial.print(", AcY: "); Serial.print(imuData.AcY, 6);
+    // Serial.print(", AcZ: "); Serial.print(imuData.AcZ, 6);
+    // Serial.print(", GyX: "); Serial.print(imuData.GyX, 6);
+    // Serial.print(", GyY: "); Serial.print(imuData.GyY, 6);
+    // Serial.print(", GyZ: "); Serial.println(imuData.GyZ, 6);
     if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
         Serial.println("Falha ao enviar dados para a fila.");
     }
@@ -109,6 +121,7 @@ void deselectMPUs() {
 }
 
 void initMPUs() {
+    Serial.println("Inicializando MPUs...");
     for (uint8_t i = 0; i < n; i++) {
         pinMode(AD0_MPU[i], OUTPUT);
         digitalWrite(AD0_MPU[i], LOW);
@@ -116,36 +129,10 @@ void initMPUs() {
 
     for (uint8_t i = 0; i < n; i++) {
         selectMPU(i);
-        setupMPU();  // Função já existente que configura o sensor
+        setupMPU();
     }
     deselectMPUs();
-}
-
-// Função para criar/atualizar o arquivo imuData.txt com dados mock
-void createMockIMUData() {
-  // Gera um arquivo mock com dados do IMU no SPIFFS no modo WRITE (sobrescrevendo o arquivo existente)
-  File file = SPIFFS.open(fileName, FILE_WRITE);  // Usando FILE_WRITE para sobrescrever
-
-  if (!file) {
-      Serial.println("Falha ao abrir o arquivo imuData.txt para escrita.");
-      return;
-  }
-
-  // Dados mock (AcX, AcY, AcZ, GyX, GyY, GyZ, Timestamp)
-  for (int i = 0; i < 10; i++) {
-      file.print(i); file.print(","); // AcX
-      file.print(i); file.print(","); // AcY
-      file.print(i); file.print(","); // AcZ
-      file.print(i); file.print(","); // GyX
-      file.print(i); file.print(","); // GyY
-      file.print(i); file.print(","); // GyZ
-      file.print(millis());  // Timestamp 
-      file.print(";\n");     // Adiciona ";" no final da linha e nova linha
-  }
-
-  // Fecha o arquivo
-  file.close();
-  Serial.println("Dados mock sobrescritos no arquivo imuData.txt.");
+    Serial.println("Inicialização dos MPUs completa.");
 }
 
 void Task2(void *pvParameters) {
@@ -155,16 +142,31 @@ void Task2(void *pvParameters) {
     initMPUs();
 
     while (true) {
+        if (changeState && dataSent) {
+            File fileToErase = SPIFFS.open(fileName, "w");
+            if (fileToErase) {
+                fileToErase.close();
+                Serial.println("Arquivo esvaziado.");
+            } else {
+                Serial.println("Falha ao abrir o arquivo para esvaziar.");
+            }
+
+            IMUData discardData;
+            while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
+                // Dados descartados
+            }
+
+            changeState = false;
+        }
+
         if (runCollect) {
             for (uint8_t i = 0; i < n; i++) {
                 selectMPU(i);
                 getIMUData(i);
-                // Criar dados mock (ou continuar a escrever no arquivo existente)
-                // createMockIMUData();
 
-                int dynamicDelay = 500;
+                int dynamicDelay = 10;
                 if (uxQueueSpacesAvailable(imuDataQueue) < 3) {
-                    dynamicDelay = 1000;
+                    dynamicDelay = 20;
                     Serial.println("Fila com pouco espaço");
                 }
 
@@ -172,7 +174,7 @@ void Task2(void *pvParameters) {
             }
             deselectMPUs();
         } else {
-            vTaskDelay(pdMS_TO_TICKS(500));
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
     }
 }
