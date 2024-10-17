@@ -1,35 +1,43 @@
 #include "include/tasks.h"
 
 void Task1(void *pvParameters) {
+    const size_t bufferLimit = 5120;
+    String dataBuffer = "";  // Buffer para armazenar os dados
+
     while (true) {
         if (runCollect) {
-            File file = SPIFFS.open(fileName, FILE_APPEND);  // Abre o arquivo no modo append
+            File file = SPIFFS.open(fileName, FILE_APPEND);  // Mantém o arquivo aberto
             if (!file) {
                 Serial.println("Falha ao abrir o arquivo no SPIFFS.");
-                vTaskDelay(pdMS_TO_TICKS(20));  // Ajuste conforme a frequência de coleta
-                continue;  // Tenta novamente na próxima iteração
+                vTaskDelay(pdMS_TO_TICKS(5));
+                return;  // Sai da task se não conseguir abrir o arquivo
             }
 
             IMUData imuData;
-            if (xQueueReceive(imuDataQueue, &imuData, 0) == pdPASS) {
-                // Grava os dados no arquivo
-                // Serial.print("Id: "); Serial.print(imuData.Id);
-                // Serial.print(", AcX: "); Serial.print(imuData.AcX, 6);
-                // Serial.print(", AcY: "); Serial.print(imuData.AcY, 6);
-                // Serial.print(", AcZ: "); Serial.print(imuData.AcZ, 6);
-                // Serial.print(", GyX: "); Serial.print(imuData.GyX, 6);
-                // Serial.print(", GyY: "); Serial.print(imuData.GyY, 6);
-                // Serial.print(", GyZ: "); Serial.println(imuData.GyZ, 6);
-                file.printf("%d,%f,%f,%f,%f,%f,%f,%f;\n",
-                            imuData.Id, imuData.AcX, imuData.AcY, imuData.AcZ,
-                            imuData.GyX, imuData.GyY, imuData.GyZ, imuData.Timestamp);
-                Serial.println("Dados escritos no SPIFFS.");
+
+            // Enquanto houver dados na fila, retire-os e adicione ao buffer
+            while (xQueueReceive(imuDataQueue, &imuData, 0) == pdPASS) {
+                dataBuffer += String(imuData.Id) + "," + String(imuData.AcX, 6) + "," + 
+                              String(imuData.AcY, 6) + "," + String(imuData.AcZ, 6) + "," +
+                              String(imuData.GyX, 6) + "," + String(imuData.GyY, 6) + "," +
+                              String(imuData.GyZ, 6) + "," + String(imuData.Timestamp, 3) + ";";
+
+                // Se o buffer atingir o limite, grava no arquivo
+                if (dataBuffer.length() >= bufferLimit) {
+                    file.print(dataBuffer);  // Grava os dados do buffer no arquivo
+                    dataBuffer = "";  // Limpa o buffer
+                }
             }
 
-            // Fecha o arquivo após cada escrita
+            // Grava qualquer dado restante no buffer
+            if (dataBuffer.length() > 0) {
+                file.print(dataBuffer);
+                dataBuffer = "";
+            }
+
             file.close();
         }
 
-        vTaskDelay(pdMS_TO_TICKS(10));  // Ajuste conforme a frequência de coleta
+        vTaskDelay(pdMS_TO_TICKS(1));  // Ajuste conforme a frequência de coleta
     }
 }
