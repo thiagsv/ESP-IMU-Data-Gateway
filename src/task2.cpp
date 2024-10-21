@@ -147,6 +147,7 @@ void initMPUs() {
 }
 
 void clearData() {
+    vTaskDelay(pdMS_TO_TICKS(500));
     File fileToErase = SPIFFS.open(fileName, "w");
     if (fileToErase) {
         fileToErase.close();
