@@ -146,35 +146,13 @@ void initMPUs() {
     Serial.println("Inicialização dos MPUs completa.");
 }
 
-void clearData() {
-    vTaskDelay(pdMS_TO_TICKS(500));
-    File fileToErase = SPIFFS.open(fileName, "w");
-    if (fileToErase) {
-        fileToErase.close();
-        // Serial.println("Arquivo esvaziado.");
-    } else {
-        Serial.println("Falha ao abrir o arquivo para esvaziar.");
-    }
-
-    IMUData discardData;
-    while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
-        // Dados descartados
-    }
-}
-
 void Task2(void *pvParameters) {
     Wire.begin();
     Wire.setClock(400000);
 
-    clearData();
     initMPUs();
 
     while (true) {
-        if (dataSent) {
-            clearData();
-            dataSent = false;
-        }
-
         if (runCollect) {
             int dynamicDelay = 1;  // Atraso inicial
             int queueCapacity = 1000;  // Capacidade máxima da fila
@@ -193,6 +171,10 @@ void Task2(void *pvParameters) {
             deselectMPUs();
             vTaskDelay(pdMS_TO_TICKS(dynamicDelay));
         } else {
+            IMUData discardData;
+            while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
+                // Dados descartados, mantendo a fila limpa
+            }
             vTaskDelay(pdMS_TO_TICKS(1));
         }
     }
