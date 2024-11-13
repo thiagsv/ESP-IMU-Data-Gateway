@@ -60,24 +60,20 @@ void getIMUData(uint8_t mpu) {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x3B);  // Endereço do registrador do acelerômetro
 
-    // int transmissionStatus = Wire.endTransmission(false);  // Envia comando sem finalizar I2C
+    int transmissionStatus = Wire.endTransmission(false);  // Envia comando sem finalizar I2C
 
-    Wire.endTransmission(false);
+    if (transmissionStatus != 0) {
+        Serial.print("Erro na transmissão com MPU ");
+        Serial.print(mpu);
+        Serial.print(". Código de erro: ");
+        Serial.println(transmissionStatus);
+    }
 
-    // if (transmissionStatus != 0) {
-    //     Serial.print("Erro na transmissão com MPU ");
-    //     Serial.print(mpu);
-    //     Serial.print(". Código de erro: ");
-    //     Serial.println(transmissionStatus);
-    //     return;
-    // }
-
-    Wire.requestFrom(MPU_ADDR, 14, true);
-    // if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
-    //     Serial.print("Erro: não foi possível ler os dados do MPU: ");
-    //     Serial.println(AD0_MPU[mpu]);
-    //     return;
-    // }
+    // Wire.requestFrom(MPU_ADDR, 14, true);
+    if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
+        Serial.print("Erro: não foi possível ler os dados (14 bits) do MPU: ");
+        Serial.println(AD0_MPU[mpu]);
+    }
 
     int16_t AcX = Wire.read() << 8 | Wire.read();
     int16_t AcY = Wire.read() << 8 | Wire.read();
@@ -104,6 +100,7 @@ void getIMUData(uint8_t mpu) {
     // Serial.print(", GyX: "); Serial.print(imuData.GyX, 6);
     // Serial.print(", GyY: "); Serial.print(imuData.GyY, 6);
     // Serial.print(", GyZ: "); Serial.println(imuData.GyZ, 6);
+
     if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
         Serial.println("Falha ao enviar dados para a fila.");
         int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
@@ -118,17 +115,18 @@ void getIMUData(uint8_t mpu) {
     }
 }
 
-void selectMPU(uint8_t mpu) {
-    uint8_t highMPU = mpu == 0 ? (n - 1) : (mpu - 1);
-    digitalWrite(AD0_MPU[highMPU], LOW);
-    digitalWrite(AD0_MPU[mpu], HIGH);
-    // vTaskDelay(pdMS_TO_TICKS(10));
-}
-
 void deselectMPUs() {
     for (uint8_t i = 0; i < n; i++) {
         digitalWrite(AD0_MPU[i], LOW);
     }
+}
+
+void selectMPU(uint8_t mpu) {
+    digitalWrite(AD0_MPU[mpu], HIGH);
+}
+
+void deselectMPU(uint8_t mpu) {
+    digitalWrite(AD0_MPU[mpu], LOW);
 }
 
 void initMPUs() {
@@ -141,6 +139,7 @@ void initMPUs() {
     for (uint8_t i = 0; i < n; i++) {
         selectMPU(i);
         setupMPU();
+        deselectMPU(i);
     }
     deselectMPUs();
     Serial.println("Inicialização dos MPUs completa.");
@@ -160,12 +159,13 @@ void Task2(void *pvParameters) {
 
             // Calcula o ajuste proporcional com base no espaço disponível
             float fillLevel = (float)(queueCapacity - availableSpaces) / queueCapacity;
-            dynamicDelay = max(1, (int)(50 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 10)
+            dynamicDelay = max(1, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 10)
 
             // Seleção e coleta dos dados
             for (uint8_t i = 0; i < n; i++) {
                 selectMPU(i);
                 getIMUData(i);
+                deselectMPU(i);
             }
 
             deselectMPUs();

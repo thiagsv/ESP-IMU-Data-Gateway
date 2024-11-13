@@ -10,7 +10,7 @@ void Task1(void *pvParameters) {
             if (!file) {
                 Serial.println("Falha ao abrir o arquivo no SPIFFS.");
                 vTaskDelay(pdMS_TO_TICKS(5));
-                return;  // Sai da task se não conseguir abrir o arquivo
+                continue;  // Sai da task se não conseguir abrir o arquivo
             }
 
             IMUData imuData;
@@ -23,14 +23,14 @@ void Task1(void *pvParameters) {
                               String(imuData.GyZ, 6) + "," + String(imuData.Timestamp, 3) + ";";
 
                 // Se o buffer atingir o limite, grava no arquivo
-                if (dataBuffer.length() >= bufferLimit) {
+                if (dataBuffer.length() >= bufferLimit && runCollect) {
                     file.print(dataBuffer);  // Grava os dados do buffer no arquivo
                     dataBuffer = "";  // Limpa o buffer
                 }
             }
 
             // Grava qualquer dado restante no buffer
-            if (dataBuffer.length() > 0) {
+            if (dataBuffer.length() > 0 && runCollect) {
                 file.print(dataBuffer);
                 dataBuffer = "";
             }

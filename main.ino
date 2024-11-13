@@ -61,6 +61,15 @@ void setup() {
 
     // Endpoint para inverter o valor de runCollect
     server.on("/toggle", HTTP_POST, [](AsyncWebServerRequest *request) {
+        if (!runCollect) {
+            File file = SPIFFS.open(fileName, "w");  // Abre o arquivo em modo de escrita, o que apaga o conteúdo
+            if (!file) {
+                Serial.println("Erro ao abrir o arquivo para apagar o conteúdo.");
+            } else {
+                file.close();  // Fecha o arquivo depois de apagá-lo
+                Serial.println("Conteúdo do arquivo apagado com sucesso.");
+            }
+        }
         runCollect = !runCollect;
 
         if (runCollect) {
@@ -92,14 +101,12 @@ void setup() {
             [file](uint8_t *buffer, size_t maxLen, size_t index) mutable -> size_t {
                 if (!file.available()) {
                     file.close();
-                    SPIFFS.remove(fileName);
                     return 0;
                 }
 
                 size_t bytesRead = file.read(buffer, maxLen);
                 if (bytesRead == 0) {
                     file.close();
-                    SPIFFS.remove(fileName);
                 }
 
                 return bytesRead;
