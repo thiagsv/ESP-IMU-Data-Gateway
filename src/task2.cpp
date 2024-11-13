@@ -56,7 +56,7 @@ void setupMPU() {
     Wire.endTransmission();
 }
 
-void getIMUData(uint8_t mpu) {
+IMUData getIMUData(uint8_t mpu) {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x3B);  // Endereço do registrador do acelerômetro
 
@@ -101,33 +101,17 @@ void getIMUData(uint8_t mpu) {
     // Serial.print(", GyY: "); Serial.print(imuData.GyY, 6);
     // Serial.print(", GyZ: "); Serial.println(imuData.GyZ, 6);
 
-    if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
-        Serial.println("Falha ao enviar dados para a fila.");
-        int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
-        Serial.print("Espaços disponíveis na fila: ");
-        Serial.println(availableSpaces);
-
-        if (availableSpaces == 0) {
-            Serial.println("A fila está cheia!");
-        } else {
-            Serial.println("Possível problema com a fila ou consumo de dados.");
-        }
-    }
-}
-
-void deselectMPUs() {
-    for (uint8_t i = 0; i < n; i++) {
-        digitalWrite(AD0_MPU[i], LOW);
-    }
+    return imuData;
 }
 
 void selectMPU(uint8_t mpu) {
     digitalWrite(AD0_MPU[mpu], HIGH);
 }
 
-void deselectMPU(uint8_t mpu) {
-    digitalWrite(AD0_MPU[mpu], LOW);
-}
+void deselectMPUs() {
+    for (uint8_t i = 0; i < n; i++) {
+        digitalWrite(AD0_MPU[i], LOW);
+    }
 
 void initMPUs() {
     Serial.println("Inicializando MPUs...");
@@ -141,7 +125,7 @@ void initMPUs() {
         setupMPU();
         deselectMPU(i);
     }
-    deselectMPUs();
+
     Serial.println("Inicialização dos MPUs completa.");
 }
 
@@ -159,16 +143,34 @@ void Task2(void *pvParameters) {
 
             // Calcula o ajuste proporcional com base no espaço disponível
             float fillLevel = (float)(queueCapacity - availableSpaces) / queueCapacity;
-            dynamicDelay = max(1, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 10)
+            dynamicDelay = max(1, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 100)
 
-            // Seleção e coleta dos dados
+            IMUData imuDataArray[n];
+
             for (uint8_t i = 0; i < n; i++) {
                 selectMPU(i);
-                getIMUData(i);
+                imuDataArray[i] = getIMUData(i);
                 deselectMPU(i);
             }
 
-            deselectMPUs();
+            // Envia os dados coletados para a fila após o loop
+            if (runCollect) 
+                for (uint8_t i = 0; i < n; i++) {
+                    if (xQueueSend(imuDataQueue, &imuDataArray[i], 0) != pdPASS) {
+                        Serial.println("Falha ao enviar dados para a fila.");
+                        int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
+                        Serial.print("Espaços disponíveis na fila: ");
+                        Serial.println(availableSpaces);
+
+                        if (availableSpaces == 0) {
+                            Serial.println("A fila está cheia!");
+                        } else {
+                            Serial.println("Possível problema com a fila ou consumo de dados.");
+                        }
+                    }
+                }
+            }
+
             vTaskDelay(pdMS_TO_TICKS(dynamicDelay));
         } else {
             IMUData discardData;
