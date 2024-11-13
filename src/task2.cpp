@@ -112,6 +112,7 @@ void deselectMPUs() {
     for (uint8_t i = 0; i < n; i++) {
         digitalWrite(AD0_MPU[i], LOW);
     }
+}
 
 void initMPUs() {
     Serial.println("Inicializando MPUs...");
@@ -123,7 +124,7 @@ void initMPUs() {
     for (uint8_t i = 0; i < n; i++) {
         selectMPU(i);
         setupMPU();
-        deselectMPU(i);
+        deselectMPUs();
     }
 
     Serial.println("Inicialização dos MPUs completa.");
@@ -150,7 +151,7 @@ void Task2(void *pvParameters) {
             for (uint8_t i = 0; i < n; i++) {
                 selectMPU(i);
                 imuDataArray[i] = getIMUData(i);
-                deselectMPU(i);
+                deselectMPUs();
             }
 
             // Envia os dados coletados para a fila após o loop
