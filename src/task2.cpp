@@ -155,7 +155,7 @@ void Task2(void *pvParameters) {
             }
 
             // Envia os dados coletados para a fila após o loop
-            if (runCollect) 
+            if (runCollect) {
                 for (uint8_t i = 0; i < n; i++) {
                     if (xQueueSend(imuDataQueue, &imuDataArray[i], 0) != pdPASS) {
                         Serial.println("Falha ao enviar dados para a fila.");
