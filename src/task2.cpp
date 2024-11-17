@@ -16,7 +16,7 @@ void setupMPU() {
     // Sair do modo sleep e usar o clock PLL
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x6B);
-    Wire.write(0x00);
+    Wire.write(0x01);
     Wire.endTransmission(true);
 
     // Adicione um pequeno delay para permitir que o MPU estabilize
@@ -56,7 +56,7 @@ void setupMPU() {
     Wire.endTransmission();
 }
 
-IMUData getIMUData(uint8_t mpu) {
+void getIMUData(uint8_t mpu) {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x3B);  // Endereço do registrador do acelerômetro
 
@@ -101,17 +101,32 @@ IMUData getIMUData(uint8_t mpu) {
     // Serial.print(", GyY: "); Serial.print(imuData.GyY, 6);
     // Serial.print(", GyZ: "); Serial.println(imuData.GyZ, 6);
 
-    return imuData;
-}
+    if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
+        Serial.println("Falha ao enviar dados para a fila.");
+        int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
+        Serial.print("Espaços disponíveis na fila: ");
+        Serial.println(availableSpaces);
 
-void selectMPU(uint8_t mpu) {
-    digitalWrite(AD0_MPU[mpu], HIGH);
+        if (availableSpaces == 0) {
+            Serial.println("A fila está cheia!");
+        } else {
+            Serial.println("Possível problema com a fila ou consumo de dados.");
+        }
+    }
 }
 
 void deselectMPUs() {
     for (uint8_t i = 0; i < n; i++) {
         digitalWrite(AD0_MPU[i], LOW);
     }
+}
+
+void selectMPU(uint8_t mpu) {
+    digitalWrite(AD0_MPU[mpu], HIGH);
+}
+
+void deselectMPU(uint8_t mpu) {
+    digitalWrite(AD0_MPU[mpu], LOW);
 }
 
 void initMPUs() {
@@ -124,9 +139,9 @@ void initMPUs() {
     for (uint8_t i = 0; i < n; i++) {
         selectMPU(i);
         setupMPU();
-        deselectMPUs();
+        deselectMPU(i);
     }
-
+    deselectMPUs();
     Serial.println("Inicialização dos MPUs completa.");
 }
 
@@ -135,49 +150,26 @@ void Task2(void *pvParameters) {
     Wire.setClock(400000);
 
     initMPUs();
+    int queueCapacity = 1000;  // Capacidade máxima da fila
 
     while (true) {
         if (runCollect) {
             int dynamicDelay = 1;  // Atraso inicial
-            int queueCapacity = 1000;  // Capacidade máxima da fila
             int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
 
             // Calcula o ajuste proporcional com base no espaço disponível
             float fillLevel = (float)(queueCapacity - availableSpaces) / queueCapacity;
-            dynamicDelay = max(1, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 100)
+            dynamicDelay = max(1, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 10)
 
-            IMUData imuDataArray[n];
-
+            // Seleção e coleta dos dados
             for (uint8_t i = 0; i < n; i++) {
                 selectMPU(i);
-                imuDataArray[i] = getIMUData(i);
-                deselectMPUs();
-            }
-
-            // Envia os dados coletados para a fila após o loop
-            if (runCollect) {
-                for (uint8_t i = 0; i < n; i++) {
-                    if (xQueueSend(imuDataQueue, &imuDataArray[i], 0) != pdPASS) {
-                        Serial.println("Falha ao enviar dados para a fila.");
-                        int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
-                        Serial.print("Espaços disponíveis na fila: ");
-                        Serial.println(availableSpaces);
-
-                        if (availableSpaces == 0) {
-                            Serial.println("A fila está cheia!");
-                        } else {
-                            Serial.println("Possível problema com a fila ou consumo de dados.");
-                        }
-                    }
-                }
+                getIMUData(i);
+                deselectMPU(i);
             }
 
             vTaskDelay(pdMS_TO_TICKS(dynamicDelay));
         } else {
-            IMUData discardData;
-            while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
-                // Dados descartados, mantendo a fila limpa
-            }
             vTaskDelay(pdMS_TO_TICKS(1));
         }
     }

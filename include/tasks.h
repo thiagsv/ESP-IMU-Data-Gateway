@@ -6,7 +6,7 @@
 #include <freertos/queue.h>
 #include <WiFi.h>
 #include <Wire.h>
-#include <SPIFFS.h>
+#include <LittleFS.h>
 
 #include <AsyncEventSource.h>
 #include <AsyncJson.h>

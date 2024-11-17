@@ -24,11 +24,11 @@ void setup() {
     digitalWrite(LED_RED_PIN, HIGH);
 
     // Teste de Montagem do SPIFFS
-    Serial.println("Iniciando SPIFFS...");
-    if (!SPIFFS.begin(true)) {
-        Serial.println("Erro ao montar o SPIFFS");
+    Serial.println("Iniciando LittleFS...");
+    if (!LittleFS.begin(true)) {
+        Serial.println("Erro ao montar o LittleFS");
     } else {
-        Serial.println("SPIFFS montado com sucesso.");
+        Serial.println("LittleFS montado com sucesso.");
     }
 
     // Checagem de Memória Antes de Inicializar o Wi-Fi
@@ -61,15 +61,6 @@ void setup() {
 
     // Endpoint para inverter o valor de runCollect
     server.on("/toggle", HTTP_POST, [](AsyncWebServerRequest *request) {
-        if (!runCollect) {
-            File file = SPIFFS.open(fileName, "w");  // Abre o arquivo em modo de escrita, o que apaga o conteúdo
-            if (!file) {
-                Serial.println("Erro ao abrir o arquivo para apagar o conteúdo.");
-            } else {
-                file.close();  // Fecha o arquivo depois de apagá-lo
-                Serial.println("Conteúdo do arquivo apagado com sucesso.");
-            }
-        }
         runCollect = !runCollect;
 
         if (runCollect) {
@@ -90,14 +81,14 @@ void setup() {
     delay(500);
 
     server.on("/getData", HTTP_GET, [](AsyncWebServerRequest *request) {
-        File file = SPIFFS.open(fileName, "r");
+        File file = LittleFS.open(fileName, "r");
         if (!file) {
-            Serial.println("Erro: Falha ao abrir o arquivo no SPIFFS.");
-            request->send(500, "text/plain", "Falha ao abrir o arquivo no SPIFFS");
+            Serial.println("Erro: Falha ao abrir o arquivo no LittleFS para leitura.");
+            request->send(500, "text/plain", "Falha ao abrir o arquivo no LittleFS");
             return;
         }
 
-        AsyncWebServerResponse *response = request->beginChunkedResponse("text/plain", 
+        AsyncWebServerResponse *response = request->beginChunkedResponse("text/plain",
             [file](uint8_t *buffer, size_t maxLen, size_t index) mutable -> size_t {
                 if (!file.available()) {
                     file.close();
@@ -105,16 +96,27 @@ void setup() {
                 }
 
                 size_t bytesRead = file.read(buffer, maxLen);
-                if (bytesRead == 0) {
-                    file.close();
-                }
-
                 return bytesRead;
             }
         );
 
         request->send(response);
         Serial.println("Resposta enviada ao cliente.");
+    });
+
+
+    server.on("/clearData", HTTP_POST, [](AsyncWebServerRequest *request) {
+        IMUData discardData;
+        while (xQueueReceive(imuDataQueue, &discardData, 0) == pdPASS) {
+            // Dados descartados, mantendo a fila limpa
+        }
+        if (LittleFS.remove(fileName)) {
+            Serial.println("Arquivo de dados excluído com sucesso.");
+            request->send(200, "text/plain", "Arquivo excluído");
+        } else {
+            Serial.println("Falha ao excluir o arquivo de dados.");
+            request->send(500, "text/plain", "Erro ao excluir o arquivo");
+        }
     });
 
     Serial.println("Criado /getData");
@@ -132,7 +134,7 @@ void setup() {
         "Task1",
         4096,
         NULL,
-        1,
+        2,
         &task1Handle,
         0
     );
