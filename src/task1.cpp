@@ -20,7 +20,7 @@ void Task1(void *pvParameters) {
             // Enquanto houver dados na fila e a coleta estiver ativa
             while (runCollect) {
                 // Verifica se há dados disponíveis na fila
-                if (xQueueReceive(imuDataQueue, &imuData, pdMS_TO_TICKS(1)) == pdPASS) {
+                if (xQueueReceive(imuDataQueue, &imuData, pdMS_TO_TICKS(0)) == pdPASS) {
                     // Formata os dados para texto e adiciona ao buffer
                     int bytesWritten = snprintf(&dataBuffer[bufferIndex], bufferSize - bufferIndex,
                                                 "%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.3f;",
@@ -38,7 +38,7 @@ void Task1(void *pvParameters) {
                 }
 
                 // Grava periodicamente se o intervalo for atingido, mesmo que o buffer não esteja cheio
-                if (millis() - lastWriteTime >= 500) {
+                if (millis() - lastWriteTime >= 200) {
                     if (bufferIndex > 0) {
                         file.write((uint8_t *)dataBuffer, bufferIndex);
                         bufferIndex = 0;
