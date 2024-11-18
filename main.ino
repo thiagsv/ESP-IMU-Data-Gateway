@@ -134,7 +134,7 @@ void setup() {
         "Task1",
         4096,
         NULL,
-        2,
+        1,
         &task1Handle,
         0
     );
