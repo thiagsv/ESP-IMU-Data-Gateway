@@ -1,7 +1,7 @@
 #include "include/tasks.h"
 
 void Task1(void *pvParameters) {
-    const int bufferSize = 1024;         // Tamanho do buffer fixo em bytes
+    const int bufferSize = 4096;         // Tamanho do buffer fixo em bytes
     char dataBuffer[bufferSize];         // Buffer de caracteres para acumular dados
     int bufferIndex = 0;                 // Índice atual no buffer
     unsigned long lastWriteTime = millis();
@@ -20,7 +20,7 @@ void Task1(void *pvParameters) {
             // Enquanto houver dados na fila e a coleta estiver ativa
             while (runCollect) {
                 // Verifica se há dados disponíveis na fila
-                if (xQueueReceive(imuDataQueue, &imuData, pdMS_TO_TICKS(0)) == pdPASS) {
+                if (xQueueReceive(imuDataQueue, &imuData, pdMS_TO_TICKS(5)) == pdPASS) {
                     // Formata os dados para texto e adiciona ao buffer
                     int bytesWritten = snprintf(&dataBuffer[bufferIndex], bufferSize - bufferIndex,
                                                 "%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.3f;",
@@ -38,7 +38,7 @@ void Task1(void *pvParameters) {
                 }
 
                 // Grava periodicamente se o intervalo for atingido, mesmo que o buffer não esteja cheio
-                if (millis() - lastWriteTime >= 200) {
+                if (millis() - lastWriteTime >= 1500) {
                     if (bufferIndex > 0) {
                         file.write((uint8_t *)dataBuffer, bufferIndex);
                         bufferIndex = 0;
@@ -46,6 +46,8 @@ void Task1(void *pvParameters) {
                     }
                     lastWriteTime = millis();  // Atualiza o tempo do último fechamento
                 }
+
+                vTaskDelay(pdMS_TO_TICKS(1));
             }
 
             // Grava qualquer dado restante no buffer ao finalizar a coleta

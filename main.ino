@@ -127,12 +127,12 @@ void setup() {
     Serial.println("Servidor iniciado");
     delay(500);
   
-    imuDataQueue = xQueueCreate(1000, sizeof(IMUData));
+    imuDataQueue = xQueueCreate(2000, sizeof(IMUData));
 
     xTaskCreatePinnedToCore(
         Task1,
         "Task1",
-        4096,
+        12288,
         NULL,
         1,
         &task1Handle,
@@ -142,9 +142,9 @@ void setup() {
     xTaskCreatePinnedToCore(
         Task2,
         "Task2",
-        4096,
+        8192,
         NULL,
-        1,
+        2,
         &task2Handle,
         1
     );

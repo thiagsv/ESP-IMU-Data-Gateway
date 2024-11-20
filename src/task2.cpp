@@ -6,10 +6,10 @@ const uint8_t AD0_MPU[] = {17, 16, 4, 2, 15};
 
 void setupMPU() {
     // Reset do MPU para garantir que ele inicie corretamente
-    Wire.beginTransmission(MPU_ADDR);
-    Wire.write(0x6B);  // Registrador de gerenciamento de energia
-    Wire.write(0x80);  // Comando de reset
-    Wire.endTransmission(true);
+    // Wire.beginTransmission(MPU_ADDR);
+    // Wire.write(0x6B);  // Registrador de gerenciamento de energia
+    // Wire.write(0x80);  // Comando de reset
+    // Wire.endTransmission(false);
 
     // vTaskDelay(pdMS_TO_TICKS(100));  // Aguarde o reset completar
 
@@ -20,7 +20,7 @@ void setupMPU() {
     Wire.endTransmission(true);
 
     // Adicione um pequeno delay para permitir que o MPU estabilize
-    // vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     // Verifica se o sensor acordou corretamente
     // Wire.beginTransmission(MPU_ADDR);
@@ -35,28 +35,42 @@ void setupMPU() {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x19);
     Wire.write(0x00);
-    Wire.endTransmission(false);
+    Wire.endTransmission(true);
 
     // --- Configura a sensibilidade do acelerômetro ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1C);
     Wire.write(0x00);  // Define a faixa de ±2g para o acelerômetro
-    Wire.endTransmission(false);
+    Wire.endTransmission(true);
 
     // --- Configura a sensibilidade do giroscópio ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1B);
     Wire.write(0x08);  // Define a faixa de ±500°/s para o giroscópio
-    Wire.endTransmission(false);
+    Wire.endTransmission(true);
 
     // --- Configura o filtro passa-baixa ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1A);
     Wire.write(0x05);
-    Wire.endTransmission();
+    Wire.endTransmission(true);
 }
 
-void getIMUData(uint8_t mpu) {
+void deselectMPUs() {
+    for (uint8_t i = 0; i < n; i++) {
+        digitalWrite(AD0_MPU[i], LOW);
+    }
+}
+
+void selectMPU(uint8_t mpu) {
+    digitalWrite(AD0_MPU[mpu], HIGH);
+}
+
+void deselectMPU(uint8_t mpu) {
+    digitalWrite(AD0_MPU[mpu], LOW);
+}
+
+bool getIMUData(uint8_t mpu, IMUData &imuData) {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x3B);  // Endereço do registrador do acelerômetro
 
@@ -67,12 +81,14 @@ void getIMUData(uint8_t mpu) {
         Serial.print(mpu);
         Serial.print(". Código de erro: ");
         Serial.println(transmissionStatus);
+        return false;
     }
 
     // Wire.requestFrom(MPU_ADDR, 14, true);
     if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
         Serial.print("Erro: não foi possível ler os dados (14 bits) do MPU: ");
         Serial.println(AD0_MPU[mpu]);
+        return false;
     }
 
     int16_t AcX = Wire.read() << 8 | Wire.read();
@@ -83,7 +99,6 @@ void getIMUData(uint8_t mpu) {
     int16_t GyY = Wire.read() << 8 | Wire.read();
     int16_t GyZ = Wire.read() << 8 | Wire.read();
 
-    IMUData imuData;
     imuData.Id = mpu;
     imuData.AcX = float(AcX) / 16384;
     imuData.AcY = float(AcY) / 16384;
@@ -101,32 +116,24 @@ void getIMUData(uint8_t mpu) {
     // Serial.print(", GyY: "); Serial.print(imuData.GyY, 6);
     // Serial.print(", GyZ: "); Serial.println(imuData.GyZ, 6);
 
-    if (xQueueSend(imuDataQueue, &imuData, 0) != pdPASS) {
-        Serial.println("Falha ao enviar dados para a fila.");
-        int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
-        Serial.print("Espaços disponíveis na fila: ");
-        Serial.println(availableSpaces);
-
-        if (availableSpaces == 0) {
-            Serial.println("A fila está cheia!");
-        } else {
-            Serial.println("Possível problema com a fila ou consumo de dados.");
-        }
-    }
+    return true;
 }
 
-void deselectMPUs() {
+bool collectAllIMUData(IMUData imuDataArray[]) {
+    bool allDataValid = true;  // Marca se todos os dados são válidos
+
     for (uint8_t i = 0; i < n; i++) {
-        digitalWrite(AD0_MPU[i], LOW);
+        selectMPU(i);
+        if (!getIMUData(i, imuDataArray[i])) {  // Chama getIMUData e valida retorno
+            allDataValid = false;
+            Serial.print("Erro ao coletar dados do MPU ");
+            Serial.println(AD0_MPU[i]);
+            break;  // Para se algum MPU falhar
+        }
+        deselectMPU(i);
     }
-}
 
-void selectMPU(uint8_t mpu) {
-    digitalWrite(AD0_MPU[mpu], HIGH);
-}
-
-void deselectMPU(uint8_t mpu) {
-    digitalWrite(AD0_MPU[mpu], LOW);
+    return allDataValid;  // Retorna true se todos os dados forem válidos
 }
 
 void initMPUs() {
@@ -150,7 +157,8 @@ void Task2(void *pvParameters) {
     Wire.setClock(400000);
 
     initMPUs();
-    int queueCapacity = 1000;  // Capacidade máxima da fila
+    int queueCapacity = 2000;  // Capacidade máxima da fila
+    IMUData imuDataArray[n];
 
     while (true) {
         if (runCollect) {
@@ -159,13 +167,17 @@ void Task2(void *pvParameters) {
 
             // Calcula o ajuste proporcional com base no espaço disponível
             float fillLevel = (float)(queueCapacity - availableSpaces) / queueCapacity;
-            dynamicDelay = max(1, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 10)
+            dynamicDelay = max(5, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 10)
 
-            // Seleção e coleta dos dados
-            for (uint8_t i = 0; i < n; i++) {
-                selectMPU(i);
-                getIMUData(i);
-                deselectMPU(i);
+            // Coleta os dados de todos os MPUs
+            if (collectAllIMUData(imuDataArray)) {
+                // Se todos os dados forem válidos, escreve na fila
+                for (uint8_t i = 0; i < n; i++) {
+                    if (xQueueSend(imuDataQueue, &imuDataArray[i], 0) != pdPASS) {
+                        Serial.print("Falha ao enviar dados do MPU ");
+                        Serial.println(i);
+                    }
+                }
             }
 
             vTaskDelay(pdMS_TO_TICKS(dynamicDelay));
