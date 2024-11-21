@@ -17,7 +17,7 @@ void setupMPU() {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x6B);
     Wire.write(0x01);
-    Wire.endTransmission(true);
+    Wire.endTransmission(false);
 
     // Adicione um pequeno delay para permitir que o MPU estabilize
     vTaskDelay(pdMS_TO_TICKS(10));
@@ -35,19 +35,19 @@ void setupMPU() {
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x19);
     Wire.write(0x00);
-    Wire.endTransmission(true);
+    Wire.endTransmission(false);
 
     // --- Configura a sensibilidade do acelerômetro ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1C);
     Wire.write(0x00);  // Define a faixa de ±2g para o acelerômetro
-    Wire.endTransmission(true);
+    Wire.endTransmission(false);
 
     // --- Configura a sensibilidade do giroscópio ---
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x1B);
     Wire.write(0x08);  // Define a faixa de ±500°/s para o giroscópio
-    Wire.endTransmission(true);
+    Wire.endTransmission(false);
 
     // --- Configura o filtro passa-baixa ---
     Wire.beginTransmission(MPU_ADDR);
@@ -84,27 +84,28 @@ bool getIMUData(uint8_t mpu, IMUData &imuData) {
         return false;
     }
 
+    Wire.beginTransmission(MPU_ADDR);
     if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
         Serial.print("Erro: não foi possível ler os dados (14 bits) do MPU: ");
         Serial.println(AD0_MPU[mpu]);
         return false;
     }
 
-    int16_t AcX = Wire.read() << 8 | Wire.read();
-    int16_t AcY = Wire.read() << 8 | Wire.read();
-    int16_t AcZ = Wire.read() << 8 | Wire.read();
-    int16_t Tmp = Wire.read() << 8 | Wire.read();
-    int16_t GyX = Wire.read() << 8 | Wire.read();
-    int16_t GyY = Wire.read() << 8 | Wire.read();
-    int16_t GyZ = Wire.read() << 8 | Wire.read();
+    // int16_t AcX = Wire.read() << 8 | Wire.read();
+    // int16_t AcY = Wire.read() << 8 | Wire.read();
+    // int16_t AcZ = Wire.read() << 8 | Wire.read();
+    // int16_t Tmp = Wire.read() << 8 | Wire.read();
+    // int16_t GyX = Wire.read() << 8 | Wire.read();
+    // int16_t GyY = Wire.read() << 8 | Wire.read();
+    // int16_t GyZ = Wire.read() << 8 | Wire.read();
 
     imuData.Id = mpu;
-    imuData.AcX = float(AcX) / 16384;
-    imuData.AcY = float(AcY) / 16384;
-    imuData.AcZ = float(AcZ) / 16384;
-    imuData.GyX = float(GyX) / 65.5;
-    imuData.GyY = float(GyY) / 65.5;
-    imuData.GyZ = float(GyZ) / 65.5;
+    imuData.AcX = float(Wire.read() << 8 | Wire.read()) / 16384;
+    imuData.AcY = float(Wire.read() << 8 | Wire.read()) / 16384;
+    imuData.AcZ = float(Wire.read() << 8 | Wire.read()) / 16384;
+    imuData.GyX = float(Wire.read() << 8 | Wire.read()) / 65.5;
+    imuData.GyY = float(Wire.read() << 8 | Wire.read()) / 65.5;
+    imuData.GyZ = float(Wire.read() << 8 | Wire.read()) / 65.5;
     imuData.Timestamp = float(micros() - initialTime) / 1000000;
 
     // Serial.print("Id: "); Serial.print(mpu);
@@ -164,7 +165,7 @@ void Task2(void *pvParameters) {
 
     while (true) {
         if (runCollect) {
-            int dynamicDelay = 5;  // Atraso inicial
+            int dynamicDelay = 7;  // Atraso inicial
             int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
 
             // Calcula o ajuste proporcional com base no espaço disponível
