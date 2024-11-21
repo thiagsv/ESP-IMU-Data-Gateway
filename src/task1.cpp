@@ -23,7 +23,7 @@ void Task1(void *pvParameters) {
                 if (xQueueReceive(imuDataQueue, &imuData, pdMS_TO_TICKS(5)) == pdPASS) {
                     // Formata os dados para texto e adiciona ao buffer
                     int bytesWritten = snprintf(&dataBuffer[bufferIndex], bufferSize - bufferIndex,
-                                                "%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.3f;",
+                                                "%d,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.5f;",
                                                 imuData.Id, imuData.AcX, imuData.AcY, imuData.AcZ,
                                                 imuData.GyX, imuData.GyY, imuData.GyZ, imuData.Timestamp);
 

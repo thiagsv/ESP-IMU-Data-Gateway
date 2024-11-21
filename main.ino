@@ -71,7 +71,7 @@ void setup() {
             digitalWrite(LED_RED_PIN, HIGH);
         }
 
-        initialTime = millis();
+        initialTime = micros();
         Serial.println("Valor de runCollect invertido para: " + String(runCollect));
         request->send(200, "text/plain", String(runCollect));
     });

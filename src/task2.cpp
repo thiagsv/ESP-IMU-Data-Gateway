@@ -84,7 +84,6 @@ bool getIMUData(uint8_t mpu, IMUData &imuData) {
         return false;
     }
 
-    // Wire.requestFrom(MPU_ADDR, 14, true);
     if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
         Serial.print("Erro: não foi possível ler os dados (14 bits) do MPU: ");
         Serial.println(AD0_MPU[mpu]);
@@ -106,7 +105,7 @@ bool getIMUData(uint8_t mpu, IMUData &imuData) {
     imuData.GyX = float(GyX) / 65.5;
     imuData.GyY = float(GyY) / 65.5;
     imuData.GyZ = float(GyZ) / 65.5;
-    imuData.Timestamp = float(millis() - initialTime) / 1000;
+    imuData.Timestamp = float(micros() - initialTime) / 1000000;
 
     // Serial.print("Id: "); Serial.print(mpu);
     // Serial.print(", AcX: "); Serial.print(imuData.AcX, 6);
@@ -133,6 +132,8 @@ bool collectAllIMUData(IMUData imuDataArray[]) {
         deselectMPU(i);
     }
 
+    deselectMPUs();
+
     return allDataValid;  // Retorna true se todos os dados forem válidos
 }
 
@@ -147,6 +148,7 @@ void initMPUs() {
         selectMPU(i);
         setupMPU();
         deselectMPU(i);
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
     deselectMPUs();
     Serial.println("Inicialização dos MPUs completa.");
@@ -162,12 +164,14 @@ void Task2(void *pvParameters) {
 
     while (true) {
         if (runCollect) {
-            int dynamicDelay = 1;  // Atraso inicial
+            int dynamicDelay = 5;  // Atraso inicial
             int availableSpaces = uxQueueSpacesAvailable(imuDataQueue);
 
             // Calcula o ajuste proporcional com base no espaço disponível
             float fillLevel = (float)(queueCapacity - availableSpaces) / queueCapacity;
-            dynamicDelay = max(5, (int)(100 * fillLevel));  // Ajusta o delay de forma proporcional (escala 1 a 10)
+            if (fillLevel >= 0.5) {
+                dynamicDelay = (int)(100 * fillLevel);  // Ajusta o delay de forma proporcional (escala 1 a 100)
+            }
 
             // Coleta os dados de todos os MPUs
             if (collectAllIMUData(imuDataArray)) {
