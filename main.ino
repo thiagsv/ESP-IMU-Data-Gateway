@@ -9,7 +9,6 @@ int runCollect = 0;
 const char *ssid = "ESP32_AP";
 const char *password = "123456789";
 String fileName = "/imuData.txt";
-bool dataSent = false;
 unsigned long initialTime;
 const int LED_GREEN_PIN = 5;
 const int LED_RED_PIN = 18;
@@ -30,9 +29,6 @@ void setup() {
     } else {
         Serial.println("LittleFS montado com sucesso.");
     }
-
-    // Checagem de Memória Antes de Inicializar o Wi-Fi
-    delay(500);
 
     // Criação do Ponto de Acesso Wi-Fi
     Serial.println("Tentando criar o ponto de acesso...");
@@ -57,8 +53,6 @@ void setup() {
         Serial.println("Erro ao obter o IP address.");
     }
 
-    delay(500);
-
     // Endpoint para inverter o valor de runCollect
     server.on("/toggle", HTTP_POST, [](AsyncWebServerRequest *request) {
         runCollect = !runCollect;
@@ -77,8 +71,6 @@ void setup() {
     });
 
     Serial.println("Criado /toggle");
-
-    delay(500);
 
     server.on("/getData", HTTP_GET, [](AsyncWebServerRequest *request) {
         File file = LittleFS.open(fileName, "r");
@@ -120,12 +112,10 @@ void setup() {
     });
 
     Serial.println("Criado /getData");
-    delay(500);
 
     server.begin();
 
     Serial.println("Servidor iniciado");
-    delay(500);
   
     imuDataQueue = xQueueCreate(2000, sizeof(IMUData));
 
