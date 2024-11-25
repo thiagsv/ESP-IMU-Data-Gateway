@@ -5,13 +5,20 @@ const uint8_t n = 5;
 const uint8_t AD0_MPU[] = {17, 16, 4, 2, 15};
 
 void setupMPU() {
+    Wire.beginTransmission(MPU_ADDR);
+    Wire.write(0x6B);      // Endereço do registrador PWR_MGMT_1
+    Wire.write(0x80);      // Escreve 0x80 para acionar o reset
+    Wire.endTransmission(true);
+
+    vTaskDelay(pdMS_TO_TICKS(50));
+
     // Sair do modo sleep e usar o clock PLL
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(0x6B);
     Wire.write(0x01);
     Wire.endTransmission(true);
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     // --- Taxa de amostragem no máximo ---
     Wire.beginTransmission(MPU_ADDR);
@@ -19,7 +26,7 @@ void setupMPU() {
     Wire.write(0x00);
     Wire.endTransmission(true);
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     // --- Configura a sensibilidade do acelerômetro ---
     Wire.beginTransmission(MPU_ADDR);
@@ -27,7 +34,7 @@ void setupMPU() {
     Wire.write(0x00);  // Define a faixa de ±2g para o acelerômetro
     Wire.endTransmission(true);
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     // --- Configura a sensibilidade do giroscópio ---
     Wire.beginTransmission(MPU_ADDR);
@@ -35,7 +42,7 @@ void setupMPU() {
     Wire.write(0x08);  // Define a faixa de ±500°/s para o giroscópio
     Wire.endTransmission(true);
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     // --- Configura o filtro passa-baixa ---
     Wire.beginTransmission(MPU_ADDR);
@@ -43,7 +50,7 @@ void setupMPU() {
     Wire.write(0x05);
     Wire.endTransmission(true);
 
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(50));
 }
 
 void deselectMPUs() {
@@ -75,20 +82,29 @@ bool getIMUData(uint8_t mpu, IMUData &imuData) {
         return false;
     }
 
-    if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
-        Serial.print("Erro ao obter 14 bytes do MPU do pino ");
-        Serial.println(AD0_MPU[mpu]);
-        return false;
-    }
+    Wire.requestFrom(MPU_ADDR, 14, true);
+    // Wire.beginTransmission(MPU_ADDR);
+    // if (Wire.requestFrom(MPU_ADDR, 14, true) != 14) {
+    //     Serial.print("Erro ao obter 14 bytes do MPU do pino ");
+    //     Serial.println(AD0_MPU[mpu]);
+    //     return false;
+    // }
+
+    int16_t AcX = Wire.read() << 8 | Wire.read();
+    int16_t AcY = Wire.read() << 8 | Wire.read();
+    int16_t AcZ = Wire.read() << 8 | Wire.read();
+    int16_t Tmp = Wire.read() << 8 | Wire.read();
+    int16_t GyX = Wire.read() << 8 | Wire.read();
+    int16_t GyY = Wire.read() << 8 | Wire.read();
+    int16_t GyZ = Wire.read() << 8 | Wire.read();
 
     imuData.Id = mpu;
-    imuData.AcX = float(Wire.read() << 8 | Wire.read()) / 16384.0;  // Acelerômetro X
-    imuData.AcY = float(Wire.read() << 8 | Wire.read()) / 16384.0;  // Acelerômetro Y
-    imuData.AcZ = float(Wire.read() << 8 | Wire.read()) / 16384.0;  // Acelerômetro Z
-    int16_t Tmp = Wire.read() << 8 | Wire.read();                  // Temperatura
-    imuData.GyX = float(Wire.read() << 8 | Wire.read()) / 65.5;    // Giroscópio X
-    imuData.GyY = float(Wire.read() << 8 | Wire.read()) / 65.5;    // Giroscópio Y
-    imuData.GyZ = float(Wire.read() << 8 | Wire.read()) / 65.5;    // Giroscópio Z
+    imuData.AcX = float(AcX) / 16384.0;  // Acelerômetro X
+    imuData.AcY = float(AcY) / 16384.0;  // Acelerômetro Y
+    imuData.AcZ = float(AcZ) / 16384.0;  // Acelerômetro Z
+    imuData.GyX = float(GyX) / 65.5;    // Giroscópio X
+    imuData.GyY = float(GyY) / 65.5;    // Giroscópio Y
+    imuData.GyZ = float(GyZ) / 65.5;    // Giroscópio Z
     imuData.Timestamp = float(micros() - initialTime) / 1000000.0;  // Timestamp em segundos
 
     return true;

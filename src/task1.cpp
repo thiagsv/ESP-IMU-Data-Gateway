@@ -38,7 +38,7 @@ void Task1(void *pvParameters) {
                 }
 
                 // Grava periodicamente se o intervalo for atingido, mesmo que o buffer não esteja cheio
-                if (millis() - lastWriteTime >= 1000) {
+                if (millis() - lastWriteTime >= 500) {
                     if (bufferIndex > 0) {
                         file.write((uint8_t *)dataBuffer, bufferIndex);
                         bufferIndex = 0;
