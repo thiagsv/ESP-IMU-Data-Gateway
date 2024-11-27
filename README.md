@@ -27,9 +27,3 @@ Projeto para ESP32 que coleta dados de um sensor IMU (MPU6050) e os transmite vi
      ```
 
 2. Faça o upload do código para o ESP32 utilizando o Arduino IDE.
-
----
-
-## Repositório
-
-Mais detalhes no GitHub: [ESP-IMU-Data-Gateway](https://github.com/thiagsv/ESP-IMU-Data-Gateway)
